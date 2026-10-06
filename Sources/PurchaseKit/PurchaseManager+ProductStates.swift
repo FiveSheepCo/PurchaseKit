@@ -3,32 +3,38 @@ import StoreKit
 
 extension PurchaseManager {
 
-    func refreshProductStates(updatedTransaction: Transaction? = nil) async {
+    func refreshProductStates(updatedTransaction: VerificationResult<Transaction>? = nil) async {
         // Prevent an older refresh from overwriting a newer entitlement snapshot
         self.stateRefreshVersion += 1
         let refreshVersion = self.stateRefreshVersion
-        var transactions = self.pendingTransactions
-
-        // The same transaction can be returned with newer revocation information
-        func collect(_ transaction: Transaction) {
-            if let existingTransaction = transactions[transaction.id],
-               existingTransaction.signedDate >= transaction.signedDate {
-                if existingTransaction.signedDate > transaction.signedDate || existingTransaction.revocationDate != nil {
-                    return
-                }
-            }
-            transactions[transaction.id] = transaction
+        if let updatedTransaction {
+            // Preserve the verification result so changing the policy cannot trust an old unverified update
+            self.pendingTransactions[updatedTransaction.unsafePayloadValue.id] = updatedTransaction
         }
 
-        if let updatedTransaction {
-            collect(updatedTransaction)
-            self.pendingTransactions = transactions
+        // Retain known revocations and upgrades even when StoreKit returns an older cached snapshot
+        var transactions = self.transactionCache.values.filter {
+            $0.revocationDate != nil || $0.isUpgraded
+        }.reduce(into: [Transaction.ID: Transaction]()) { $0[$1.id] = $1 }
+
+        @discardableResult
+        func collect(_ result: VerificationResult<Transaction>) -> Transaction? {
+            guard let transaction = resolveTransaction(for: result) else { return nil }
+            if let existingTransaction = transactions[transaction.id],
+               !TransactionRevision(transaction).supersedes(TransactionRevision(existingTransaction)) {
+                return existingTransaction
+            }
+            transactions[transaction.id] = transaction
+            return transaction
+        }
+
+        for result in self.pendingTransactions.values {
+            collect(result)
         }
 
         // Current entitlements include every valid ownership source, including Family Sharing
         for await result in Transaction.currentEntitlements {
-            guard let transaction = resolveVerifiedValue(for: result) else { continue }
-            collect(transaction)
+            collect(result)
         }
 
         // Latest transactions also identify products that have expired or been revoked
@@ -36,9 +42,8 @@ extension PurchaseManager {
         productIds.formUnion(self.productStates.keys)
         productIds.formUnion(transactions.values.map(\.productID))
         for productId in productIds {
-            guard let result = await Transaction.latest(for: productId),
-                  let transaction = resolveVerifiedValue(for: result) else { continue }
-            collect(transaction)
+            guard let result = await Transaction.latest(for: productId) else { continue }
+            collect(result)
         }
 
         var subscriptionGroupIds = Set(transactions.values.compactMap(\.subscriptionGroupID))
@@ -51,10 +56,7 @@ extension PurchaseManager {
             do {
                 let subscriptionStatuses = try await StoreKit::Product.SubscriptionInfo.status(for: subscriptionGroupId)
                 for subscriptionStatus in subscriptionStatuses {
-                    guard let statusTransaction = resolveVerifiedValue(for: subscriptionStatus.transaction) else { continue }
-                    collect(statusTransaction)
-                    // A transaction update may contain newer revocation information than cached status
-                    let transaction = transactions[statusTransaction.id] ?? statusTransaction
+                    guard let transaction = collect(subscriptionStatus.transaction) else { continue }
                     subscriptionTransactions[transaction.originalID] = transaction
                     productIds.insert(transaction.productID)
                     let state = resolveProductState(for: subscriptionStatus, transaction: transaction)
@@ -110,73 +112,5 @@ extension PurchaseManager {
         guard refreshVersion == self.stateRefreshVersion, !Task.isCancelled else { return }
         self.productStates = resolvedProductStates
         self.pendingTransactions.removeAll()
-    }
-
-    func resolveProductState(for transaction: Transaction) async -> ProductState {
-        // Transactions with a revocation date have been refunded or revoked
-        if let revocation = resolveRevocation(for: transaction) {
-            return .revoked(revocation)
-        }
-
-        switch transaction.productType {
-            case .nonRenewable:
-                return await resolveNonRenewingSubscriptionState(for: transaction)
-            case .nonConsumable, .consumable:
-                return .active(ActiveProductState(expirationDate: nil))
-            default:
-                return .unknown
-        }
-    }
-
-    private func resolveProductState(
-        for subscriptionStatus: StoreKit::Product.SubscriptionInfo.Status,
-        transaction: Transaction
-    ) -> ProductState {
-        guard let renewalInfo = resolveVerifiedValue(for: subscriptionStatus.renewalInfo) else {
-            return .unknown
-        }
-
-        return ProductState.resolveSubscriptionState(
-            for: subscriptionStatus.state,
-            expirationDate: transaction.expirationDate,
-            gracePeriodExpirationDate: renewalInfo.gracePeriodExpirationDate,
-            revocation: resolveRevocation(for: transaction),
-            isUpgraded: transaction.isUpgraded,
-            allowAccessDuringBillingRetry: self.config.allowAccessDuringBillingRetry
-        )
-    }
-
-    func resolveVerifiedValue<Value>(for result: VerificationResult<Value>) -> Value? {
-        switch result {
-            case .verified(let value):
-                return value
-            case .unverified(let value, let verificationError):
-                self.logger.error("StoreKit verification error: \(verificationError)")
-                guard self.config.allowUnverifiedTransactions else { return nil }
-                self.logger.warning("Accepted UNVERIFIED StoreKit information")
-                return value
-        }
-    }
-
-    private func resolveRevocation(for transaction: Transaction) -> RevokedProductState? {
-        guard let revocationDate = transaction.revocationDate else { return nil }
-        return RevokedProductState(
-            revocationDate: revocationDate,
-            revocationReason: transaction.revocationReason,
-            revocationPercentage: transaction.revocationPercentage
-        )
-    }
-
-    private func resolveNonRenewingSubscriptionState(for transaction: Transaction) async -> ProductState {
-        guard let resolver = self.config.nonRenewingSubscriptionStateResolver else {
-            return .unknown
-        }
-
-        do {
-            return try await resolver(transaction)
-        } catch {
-            self.logger.error("Failed to resolve non-renewing subscription '\(transaction.productID)': \(error)")
-            return .unknown
-        }
     }
 }

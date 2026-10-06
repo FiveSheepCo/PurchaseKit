@@ -34,7 +34,10 @@ public class PurchaseManager {
     var stateRefreshVersion: UInt64 = 0
 
     /// Transaction updates retained until the latest entitlement refresh completes.
-    var pendingTransactions: [Transaction.ID: Transaction] = [:]
+    var pendingTransactions: [Transaction.ID: VerificationResult<Transaction>] = [:]
+
+    /// The newest verified transaction information observed during this session.
+    var transactionCache = TransactionCache<Transaction>()
     
     /// Products that have been registered by the user and need to be fetched.
     var registeredProducts: [RegisteredProduct] = []

@@ -23,7 +23,7 @@ extension PurchaseManager {
     func handle(verificationResult result: VerificationResult<Transaction>) async {
         guard let transaction = resolveVerifiedValue(for: result) else { return }
 
-        await self.refreshProductStates(updatedTransaction: transaction)
+        await self.refreshProductStates(updatedTransaction: result)
         guard !Task.isCancelled else { return }
 
         let delivery = self.config.transactionHandler.map { handler in
