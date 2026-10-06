@@ -1,6 +1,7 @@
 import Foundation
 
 public struct ActiveProductState: Hashable {
+    /// The access expiration date, if known. This is also nil for permanent purchases.
     public let expirationDate: Date?
 
     public init(expirationDate: Date?) {

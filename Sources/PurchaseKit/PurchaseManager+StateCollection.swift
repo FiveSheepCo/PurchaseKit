@@ -1,0 +1,61 @@
+import Foundation
+import StoreKit
+
+extension PurchaseManager {
+
+    /// Collect current access separately from historical transaction information.
+    func collectProductStateSnapshot() async -> ProductStateSnapshot {
+        let productIds = Set(self.registeredProducts.map(\.id)).union(self.productStates.keys)
+        var snapshot = ProductStateSnapshot(productIds: productIds)
+
+        // Keep known revocations and upgrades when StoreKit returns an older cached snapshot
+        for transaction in self.transactionCache.values where transaction.revocationDate != nil || transaction.isUpgraded {
+            snapshot.collect(transaction)
+        }
+        for result in self.pendingTransactions.values {
+            self.collect(result, into: &snapshot)
+        }
+        for await result in Transaction.currentEntitlements {
+            if let transaction = self.collect(result, into: &snapshot) {
+                snapshot.currentEntitlementIds.insert(transaction.id)
+            }
+        }
+
+        // Latest transactions also identify products that have expired or been revoked
+        for productId in snapshot.productIds {
+            guard let result = await Transaction.latest(for: productId) else { continue }
+            self.collect(result, into: &snapshot)
+        }
+        return snapshot
+    }
+
+    /// Query every subscription group to preserve independent purchased and shared access.
+    func collectSubscriptionStates(into snapshot: inout ProductStateSnapshot) async -> [UInt64: Transaction] {
+        var groupIds = Set(snapshot.transactions.values.compactMap(\.subscriptionGroupID))
+        groupIds.formUnion(self.products.compactMap { $0.skProduct.subscription?.subscriptionGroupID })
+        var subscriptionTransactions: [UInt64: Transaction] = [:]
+
+        for groupId in groupIds {
+            do {
+                let statuses = try await StoreKit::Product.SubscriptionInfo.status(for: groupId)
+                for status in statuses {
+                    guard let transaction = self.collect(status.transaction, into: &snapshot) else { continue }
+                    subscriptionTransactions[transaction.originalID] = transaction
+                    snapshot.append(self.resolveProductState(for: status, transaction: transaction), for: transaction)
+                }
+            } catch {
+                self.logger.error("Failed to fetch subscription status for group '\(groupId)': \(error)")
+            }
+        }
+        return subscriptionTransactions
+    }
+
+    @discardableResult
+    private func collect(
+        _ result: VerificationResult<Transaction>,
+        into snapshot: inout ProductStateSnapshot
+    ) -> Transaction? {
+        guard let transaction = self.resolveTransaction(for: result) else { return nil }
+        return snapshot.collect(transaction)
+    }
+}
