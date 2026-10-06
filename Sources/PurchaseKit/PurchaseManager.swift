@@ -6,6 +6,7 @@ public struct PurchaseManagerConfiguration {
     var allowUnverifiedTransactions: Bool = false
     var allowAccessDuringBillingRetry: Bool = false
     var nonRenewingSubscriptionStateResolver: (@MainActor @Sendable (Transaction) async throws -> ProductState)?
+    var transactionHandler: (@MainActor @Sendable (Transaction) async throws -> Void)?
 }
 
 @MainActor
@@ -25,6 +26,9 @@ public class PurchaseManager {
 
     /// The task loading products and existing entitlements when the manager starts.
     var startupTask: Task<Void, Never>?
+
+    /// The coordinator serializing delivery attempts for each transaction.
+    let transactionDelivery = TransactionDelivery()
 
     /// The version of the latest product state refresh.
     var stateRefreshVersion: UInt64 = 0
@@ -64,16 +68,10 @@ public class PurchaseManager {
             defer { self.startupTask = nil }
 
             await self.refresh()
-
-            // Process unfinished transactions even if the manager starts after app launch
-            for await result in Transaction.unfinished {
-                guard !Task.isCancelled else { return }
-                await self.handle(verificationResult: result)
-            }
         }
     }
 
-    /// Fetch registered products and refresh the customer's current entitlements.
+    /// Fetch products, refresh current entitlements, and retry unfinished transactions.
     ///
     /// Call this when the app returns to the foreground or its entitlement policy changes.
     public func refresh() async {
@@ -83,5 +81,6 @@ public class PurchaseManager {
             self.logger.error("Failed to fetch products: \(error)")
         }
         await self.refreshProductStates()
+        await self.retryUnfinishedTransactions()
     }
 }

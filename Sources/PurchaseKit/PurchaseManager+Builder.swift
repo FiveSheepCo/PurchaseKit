@@ -2,6 +2,23 @@ import Foundation
 import StoreKit
 
 extension PurchaseManager {
+
+    /// Handle transactions before marking them as finished in StoreKit.
+    ///
+    /// Return only after delivering or reconciling the purchased content durably.
+    /// Throw to leave the transaction unfinished; `refresh()` retries unfinished transactions.
+    /// Without a handler, transactions remain unfinished.
+    ///
+    /// Use the transaction's `id` to make delivery idempotent across retries and app launches.
+    /// For consumables, persist the delivered `purchasedQuantity` with the transaction ID.
+    /// Handle refunds and revocations without delivering the purchased content again.
+    @discardableResult
+    public func handleTransactions(
+        using handler: @escaping @MainActor @Sendable (Transaction) async throws -> Void
+    ) -> Self {
+        self.config.transactionHandler = handler
+        return self
+    }
     
     @discardableResult
     public func add(iap id: String) -> Self {
