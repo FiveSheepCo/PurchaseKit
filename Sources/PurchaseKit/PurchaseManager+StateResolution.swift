@@ -4,18 +4,17 @@ import StoreKit
 extension PurchaseManager {
 
     func resolveProductState(for transaction: Transaction) async -> ProductState {
-        // Transactions with a revocation date have been refunded or revoked
-        if let revocation = resolveRevocation(for: transaction) {
-            return .revoked(revocation)
-        }
-
         switch transaction.productType {
             case .nonRenewable:
+                if let revocation = resolveRevocation(for: transaction) {
+                    return .revoked(revocation)
+                }
                 return await resolveNonRenewingSubscriptionState(for: transaction)
-            case .nonConsumable, .consumable:
-                return .active(ActiveProductState(expirationDate: nil))
             default:
-                return .unknown
+                return ProductState.resolveIAPState(
+                    for: transaction.productType,
+                    revocation: resolveRevocation(for: transaction)
+                )
         }
     }
 

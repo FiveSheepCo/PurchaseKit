@@ -11,15 +11,22 @@ struct ProductStateSnapshot {
     private(set) var transactions: [Transaction.ID: Transaction] = [:]
     var currentEntitlementIds: Set<Transaction.ID> = []
     private(set) var productIds: Set<String>
+    private var consumableProductIds: Set<String>
     private var candidates: [Candidate] = []
 
-    init(productIds: Set<String>) {
+    init(productIds: Set<String>, consumableProductIds: Set<String> = []) {
         self.productIds = productIds
+        self.consumableProductIds = consumableProductIds
     }
 
     @discardableResult
     mutating func collect(_ transaction: Transaction) -> Transaction {
         self.productIds.insert(transaction.productID)
+        if transaction.productType == .consumable {
+            // Consumables are delivered by transaction and never establish permanent product access
+            self.consumableProductIds.insert(transaction.productID)
+            return transaction
+        }
         if let existingTransaction = self.transactions[transaction.id],
            !TransactionRevision(transaction).supersedes(TransactionRevision(existingTransaction)) {
             return existingTransaction
@@ -55,7 +62,7 @@ struct ProductStateSnapshot {
             return lhs.transaction.id > rhs.transaction.id
         }
         let candidatesByProductId = Dictionary(grouping: sortedCandidates, by: { $0.transaction.productID })
-        return self.productIds.reduce(into: [:]) { states, productId in
+        return self.productIds.subtracting(self.consumableProductIds).reduce(into: [:]) { states, productId in
             let candidates = candidatesByProductId[productId]?.map(\.state) ?? []
             states[productId] = ProductState.preferredState(from: candidates)
         }

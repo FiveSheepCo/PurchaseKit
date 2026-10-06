@@ -50,8 +50,11 @@ public class PurchaseManager {
     
     /// Fully resolved and purchase-ready products.
     var products: [Product] = []
+
+    /// Product identifiers known to represent consumable quantities rather than permanent access.
+    var consumableProductIds: Set<String> = []
     
-    /// The current state of each resolved product.
+    /// The current access state of each product, excluding consumable quantities.
     var productStates: [Product.ID: ProductState] = [:]
     
     /// The purchase manager configuration.

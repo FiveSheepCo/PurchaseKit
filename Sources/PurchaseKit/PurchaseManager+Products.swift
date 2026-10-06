@@ -27,5 +27,6 @@ extension PurchaseManager {
         }
 
         self.products = resolvedProducts
+        self.consumableProductIds.formUnion(resolvedProducts.filter(\.isConsumable).map(\.id))
     }
 }
