@@ -1,39 +1,6 @@
 import Foundation
 import StoreKit
 
-public struct ActiveProductState: Hashable {
-    public let expirationDate: Date?
-
-    public init(expirationDate: Date?) {
-        self.expirationDate = expirationDate
-    }
-}
-
-public struct ExpiredProductState: Hashable {
-    public let expirationDate: Date
-
-    public init(expirationDate: Date) {
-        self.expirationDate = expirationDate
-    }
-}
-
-public struct RevokedProductState: Hashable {
-    /// The revocation date, if StoreKit provides it.
-    public let revocationDate: Date?
-    public let revocationReason: StoreKit::Transaction.RevocationReason?
-    public let revocationPercentage: Decimal?
-
-    public init(
-        revocationDate: Date?,
-        revocationReason: StoreKit::Transaction.RevocationReason? = nil,
-        revocationPercentage: Decimal? = nil
-    ) {
-        self.revocationDate = revocationDate
-        self.revocationReason = revocationReason
-        self.revocationPercentage = revocationPercentage
-    }
-}
-
 public enum ProductState: Hashable {
     case active(ActiveProductState)
     case expired(ExpiredProductState)
