@@ -35,11 +35,15 @@ extension PurchaseManager {
     ///
     /// Use trusted server data to determine expiration independently of the device clock.
     /// Without a resolver, non-renewing subscriptions have an unknown state.
+    /// The policy is rechecked every minute while the manager is running.
     @discardableResult
     public func resolveNonRenewingSubscriptions(
         using resolver: @escaping @MainActor @Sendable (Transaction) async throws -> ProductState
     ) -> Self {
         self.config.nonRenewingSubscriptionStateResolver = resolver
+        if self.updateTask != nil {
+            self.setupNonRenewingSubscriptionUpdateTask()
+        }
         return self
     }
 }
