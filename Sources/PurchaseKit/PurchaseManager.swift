@@ -39,6 +39,12 @@ public class PurchaseManager {
     /// The newest verified transaction information observed during this session.
     var transactionCache = TransactionCache<Transaction>()
     
+    /// Status updates retained until the latest entitlement refresh completes.
+    var pendingSubscriptionStatuses: [UInt64: StoreKit::Product.SubscriptionInfo.Status] = [:]
+
+    /// The newest verified renewal information observed for each ownership source.
+    var subscriptionStatusCache = SubscriptionStatusCache<ResolvedSubscriptionStatus>()
+
     /// Products that have been registered by the user and need to be fetched.
     var registeredProducts: [RegisteredProduct] = []
     

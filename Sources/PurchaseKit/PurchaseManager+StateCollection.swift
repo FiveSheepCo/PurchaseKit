@@ -29,29 +29,8 @@ extension PurchaseManager {
         return snapshot
     }
 
-    /// Query every subscription group to preserve independent purchased and shared access.
-    func collectSubscriptionStates(into snapshot: inout ProductStateSnapshot) async -> [UInt64: Transaction] {
-        var groupIds = Set(snapshot.transactions.values.compactMap(\.subscriptionGroupID))
-        groupIds.formUnion(self.products.compactMap { $0.skProduct.subscription?.subscriptionGroupID })
-        var subscriptionTransactions: [UInt64: Transaction] = [:]
-
-        for groupId in groupIds {
-            do {
-                let statuses = try await StoreKit::Product.SubscriptionInfo.status(for: groupId)
-                for status in statuses {
-                    guard let transaction = self.collect(status.transaction, into: &snapshot) else { continue }
-                    subscriptionTransactions[transaction.originalID] = transaction
-                    snapshot.append(self.resolveProductState(for: status, transaction: transaction), for: transaction)
-                }
-            } catch {
-                self.logger.error("Failed to fetch subscription status for group '\(groupId)': \(error)")
-            }
-        }
-        return subscriptionTransactions
-    }
-
     @discardableResult
-    private func collect(
+    func collect(
         _ result: VerificationResult<Transaction>,
         into snapshot: inout ProductStateSnapshot
     ) -> Transaction? {

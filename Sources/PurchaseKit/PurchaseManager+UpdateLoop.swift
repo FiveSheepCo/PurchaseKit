@@ -27,7 +27,7 @@ extension PurchaseManager {
             // Status changes include expiration and the end of a grace period
             for await subscriptionStatus in StoreKit::Product.SubscriptionInfo.Status.updates {
                 guard !Task.isCancelled, let self else { return }
-                await self.refreshProductStates(updatedTransaction: subscriptionStatus.transaction)
+                await self.refreshProductStates(updatedSubscriptionStatus: subscriptionStatus)
             }
 
             // Restart only if StoreKit ends the sequence without cancellation

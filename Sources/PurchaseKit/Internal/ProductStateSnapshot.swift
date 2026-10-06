@@ -32,6 +32,17 @@ struct ProductStateSnapshot {
         self.candidates.append(Candidate(transaction: transaction, state: state))
     }
 
+    /// Find the most recent period for each independently purchased or shared subscription.
+    func latestSubscriptionTransactions() -> [UInt64: Transaction] {
+        self.transactions.values.filter { $0.productType == .autoRenewable }.reduce(into: [:]) { latest, transaction in
+            if let previous = latest[transaction.originalID],
+               !SubscriptionTransaction(transaction).covers(SubscriptionTransaction(previous)) {
+                return
+            }
+            latest[transaction.originalID] = transaction
+        }
+    }
+
     func resolvedStates() -> [Product.ID: ProductState] {
         // Prefer current access; otherwise retain the most recent known inactive state
         let sortedCandidates = self.candidates.sorted { lhs, rhs in

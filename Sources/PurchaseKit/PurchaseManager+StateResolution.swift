@@ -19,18 +19,11 @@ extension PurchaseManager {
         }
     }
 
-    func resolveProductState(
-        for subscriptionStatus: StoreKit::Product.SubscriptionInfo.Status,
-        transaction: Transaction
-    ) -> ProductState {
-        guard let renewalInfo = resolveVerifiedValue(for: subscriptionStatus.renewalInfo) else {
-            return .unknown
-        }
-
+    func resolveProductState(for status: ResolvedSubscriptionStatus, transaction: Transaction) -> ProductState {
         return ProductState.resolveSubscriptionState(
-            for: subscriptionStatus.state,
+            for: status.state,
             expirationDate: transaction.expirationDate,
-            gracePeriodExpirationDate: renewalInfo.gracePeriodExpirationDate,
+            gracePeriodExpirationDate: status.gracePeriodExpirationDate,
             revocation: resolveRevocation(for: transaction),
             isUpgraded: transaction.isUpgraded,
             allowAccessDuringBillingRetry: self.config.allowAccessDuringBillingRetry
