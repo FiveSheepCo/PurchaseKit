@@ -74,58 +74,76 @@ extension PurchaseManager {
     }
     
     private func resolveProductState(for transaction: Transaction) async -> ProductState {
-        // Transactions with a revocation date have been refunded or revoked
-        if let revocationDate = transaction.revocationDate {
-            let revokedProduct = RevokedProductState(
-                revocationDate: revocationDate,
-                revocationReason: transaction.revocationReason,
-                revocationPercentage: transaction.revocationPercentage
-            )
-            return .revoked(revokedProduct)
+        // Transactions with a revocation date have been refunded or revoked.
+        if let revocation = resolveRevocation(for: transaction) {
+            return .revoked(revocation)
         }
-        
-        // Transactions with an expiration date can be ongoing or expired subscriptions
-        else if let expirationDate = transaction.expirationDate {
-            
-            let isExplicitlyExpired: Bool = await {
-                
-                // Get subscription status
-                guard let subscriptionStatus = await transaction.subscriptionStatus else {
-                    return false
-                }
-                
-                // Renewal states that explicitly expire or revoke a product
-                var explicitExpirationStates: Set<StoreKit::Product.SubscriptionInfo.RenewalState> = [
-                    .expired, .revoked, .inBillingRetryPeriod
-                ]
-                
-                // Exclude billing retry from expiration states if requested
-                if self.config.allowAccessDuringBillingRetry {
-                    explicitExpirationStates.remove(.inBillingRetryPeriod)
-                }
-                
-                // Check whether the product is explicitly expired.
-                // This excludes billing retry and billing grace periods on purpose.
-                return explicitExpirationStates.contains(subscriptionStatus.state)
-            }()
-            
-            // Check whether the transaction has expired
-            if isExplicitlyExpired {
-                let expiredProduct = ExpiredProductState(expirationDate: expirationDate)
-                return .expired(expiredProduct)
+
+        // Auto-renewable subscriptions use the latest verified subscription status.
+        if transaction.productType == .autoRenewable {
+            guard let subscriptionStatus = await transaction.subscriptionStatus else {
+                return .unknown
             }
-            
-            // Expiration date is in the future, treat as active
-            else {
-                let activeProduct = ActiveProductState(expirationDate: expirationDate)
-                return .active(activeProduct)
-            }
+            return resolveProductState(for: subscriptionStatus)
         }
-        
-        // Transactions with no revocation or expiration date are considered active
-        else {
-            let activeProduct = ActiveProductState(expirationDate: nil)
-            return .active(activeProduct)
+
+        switch transaction.productType {
+            case .nonRenewable:
+                return await resolveNonRenewingSubscriptionState(for: transaction)
+            case .nonConsumable, .consumable:
+                return .active(ActiveProductState(expirationDate: nil))
+            default:
+                return .unknown
+        }
+    }
+
+    func resolveProductState(for subscriptionStatus: StoreKit::Product.SubscriptionInfo.Status) -> ProductState {
+        // Status may contain a newer transaction than the incoming update.
+        guard let transaction = resolveVerifiedValue(for: subscriptionStatus.transaction),
+              let renewalInfo = resolveVerifiedValue(for: subscriptionStatus.renewalInfo) else {
+            return .unknown
+        }
+
+        return ProductState.resolveSubscriptionState(
+            for: subscriptionStatus.state,
+            expirationDate: transaction.expirationDate,
+            gracePeriodExpirationDate: renewalInfo.gracePeriodExpirationDate,
+            revocation: resolveRevocation(for: transaction),
+            allowAccessDuringBillingRetry: self.config.allowAccessDuringBillingRetry
+        )
+    }
+
+    func resolveVerifiedValue<Value>(for result: VerificationResult<Value>) -> Value? {
+        switch result {
+            case .verified(let value):
+                return value
+            case .unverified(let value, let verificationError):
+                self.logger.error("StoreKit verification error: \(verificationError)")
+                guard self.config.allowUnverifiedTransactions else { return nil }
+                self.logger.warning("Accepted UNVERIFIED StoreKit information")
+                return value
+        }
+    }
+
+    private func resolveRevocation(for transaction: Transaction) -> RevokedProductState? {
+        guard let revocationDate = transaction.revocationDate else { return nil }
+        return RevokedProductState(
+            revocationDate: revocationDate,
+            revocationReason: transaction.revocationReason,
+            revocationPercentage: transaction.revocationPercentage
+        )
+    }
+
+    private func resolveNonRenewingSubscriptionState(for transaction: Transaction) async -> ProductState {
+        guard let resolver = self.config.nonRenewingSubscriptionStateResolver else {
+            return .unknown
+        }
+
+        do {
+            return try await resolver(transaction)
+        } catch {
+            self.logger.error("Failed to resolve non-renewing subscription '\(transaction.productID)': \(error)")
+            return .unknown
         }
     }
 }

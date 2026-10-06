@@ -5,6 +5,7 @@ import OSLog
 public struct PurchaseManagerConfiguration {
     var allowUnverifiedTransactions: Bool = false
     var allowAccessDuringBillingRetry: Bool = false
+    var nonRenewingSubscriptionStateResolver: (@MainActor @Sendable (Transaction) async throws -> ProductState)?
 }
 
 @MainActor

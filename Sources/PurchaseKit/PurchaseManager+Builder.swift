@@ -1,4 +1,5 @@
 import Foundation
+import StoreKit
 
 extension PurchaseManager {
     
@@ -14,7 +15,7 @@ extension PurchaseManager {
         return self
     }
     
-    /// Allow unverified transactions to be handled.
+    /// Allow unverified transactions and subscription renewal information to be handled.
     ///
     /// - Warning: This is highly discouraged and should never be done in production environments!
     @discardableResult
@@ -27,6 +28,18 @@ extension PurchaseManager {
     @discardableResult
     public func allowAccessDuringBillingRetry(_ enabled: Bool = true) -> Self {
         self.config.allowAccessDuringBillingRetry = enabled
+        return self
+    }
+
+    /// Resolve non-renewing subscription states using the app's entitlement policy.
+    ///
+    /// Use trusted server data to determine expiration independently of the device clock.
+    /// Without a resolver, non-renewing subscriptions have an unknown state.
+    @discardableResult
+    public func resolveNonRenewingSubscriptions(
+        using resolver: @escaping @MainActor @Sendable (Transaction) async throws -> ProductState
+    ) -> Self {
+        self.config.nonRenewingSubscriptionStateResolver = resolver
         return self
     }
 }
