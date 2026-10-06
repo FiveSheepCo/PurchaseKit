@@ -25,6 +25,8 @@ extension PurchaseManager {
                     continue
             }
         }
+
+        self.products = resolvedProducts
     }
     
     func setupUpdateTask() {

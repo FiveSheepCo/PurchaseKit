@@ -15,6 +15,9 @@ public class PurchaseManager {
     
     /// The task handling incoming transaction updates.
     var updateTask: Task<Void, Never>?
+
+    /// The task fetching registered products when the manager starts.
+    var startupTask: Task<Void, Never>?
     
     /// Products that have been registered by the user and need to be fetched.
     var registeredProducts: [RegisteredProduct] = []
@@ -32,5 +35,17 @@ public class PurchaseManager {
     
     public func start() {
         setupUpdateTask()
+
+        guard self.startupTask == nil else { return }
+        self.startupTask = Task { [weak self] in
+            guard let self else { return }
+            defer { self.startupTask = nil }
+
+            do {
+                try await self.fetchProducts()
+            } catch {
+                self.logger.error("Failed to fetch products: \(error)")
+            }
+        }
     }
 }
