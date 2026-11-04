@@ -24,19 +24,26 @@ import Testing
 }
 
 @MainActor
+private func launch(cachingIn defaults: UserDefaults) -> PurchaseManager {
+    let manager = PurchaseManager()
+    manager.setup().cacheStates(in: defaults).apply()
+    return manager
+}
+
+@MainActor
 @Test func cachedStatesAppearUntilTheFirstRefresh() throws {
     let defaults = try #require(UserDefaults(suiteName: "PurchaseKitTests.\(UUID())"))
     let unlocked = ProductState.active(ActiveProductState(expirationDate: nil))
 
-    let firstLaunch = PurchaseManager().cacheStates(in: defaults)
+    let firstLaunch = launch(cachingIn: defaults)
     firstLaunch.publish(["unlock": unlocked, "other": .unknown])
 
-    let secondLaunch = PurchaseManager().cacheStates(in: defaults)
+    let secondLaunch = launch(cachingIn: defaults)
     secondLaunch.loadCachedStates()
     #expect(secondLaunch.productStates == ["unlock": unlocked])
 
     // States from a refresh are newer than anything stored
-    let refreshedLaunch = PurchaseManager().cacheStates(in: defaults)
+    let refreshedLaunch = launch(cachingIn: defaults)
     refreshedLaunch.stateRefreshVersion = 1
     refreshedLaunch.loadCachedStates()
     #expect(refreshedLaunch.productStates.isEmpty)

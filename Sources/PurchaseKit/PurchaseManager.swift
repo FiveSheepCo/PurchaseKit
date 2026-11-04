@@ -83,6 +83,10 @@ public class PurchaseManager {
     @ObservationIgnored
     var stateContinuations: [UUID: AsyncStream<[Product.ID: ProductState]>.Continuation] = [:]
 
+    /// Whether a setup has been applied; the manager is set up once.
+    @ObservationIgnored
+    var isSetUp = false
+
     /// The purchase manager configuration.
     @ObservationIgnored
     var config = PurchaseManagerConfiguration()
@@ -96,7 +100,7 @@ public class PurchaseManager {
         self.nonRenewingSubscriptionUpdateTask?.cancel()
     }
     
-    public func start() {
+    func start() {
         loadCachedStates()
         setupUpdateTask()
         setupSubscriptionUpdateTask()

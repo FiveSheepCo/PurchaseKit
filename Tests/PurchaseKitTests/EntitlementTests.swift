@@ -11,6 +11,13 @@ private enum OtherEntitlement: Entitlement {
     case pro
 }
 
+@MainActor
+private func manager(_ configure: (PurchaseManager.Setup<AppEntitlement>) -> PurchaseManager.Setup<AppEntitlement>) -> PurchaseManager {
+    let manager = PurchaseManager()
+    configure(manager.setup(entitlements: AppEntitlement.self)).apply()
+    return manager
+}
+
 private let permanent = ProductState.active(ActiveProductState(expirationDate: nil))
 private let expiringSoon = ProductState.active(ActiveProductState(expirationDate: Date(timeIntervalSince1970: 10)))
 private let expiringLater = ProductState.active(ActiveProductState(expirationDate: Date(timeIntervalSince1970: 20)))
@@ -20,9 +27,10 @@ private let revokedLater = ProductState.revoked(RevokedProductState(revocationDa
 
 @MainActor
 @Test func anyActiveProductGrantsItsEntitlement() {
-    let manager = PurchaseManager()
-        .add(subscription: "pro_monthly", grants: AppEntitlement.pro)
-        .add(iap: "pro_lifetime", grants: AppEntitlement.pro)
+    let manager = manager {
+        $0.add(subscription: "pro_monthly", grants: .pro)
+            .add(iap: "pro_lifetime", grants: .pro)
+    }
     manager.publish(["pro_monthly": expiredEarlier, "pro_lifetime": permanent])
 
     #expect(manager.isActive(AppEntitlement.pro))
@@ -32,7 +40,7 @@ private let revokedLater = ProductState.revoked(RevokedProductState(revocationDa
 
 @MainActor
 @Test func entitlementsOfDifferentTypesNeverCollide() {
-    let manager = PurchaseManager().add(iap: "pro_lifetime", grants: AppEntitlement.pro)
+    let manager = manager { $0.add(iap: "pro_lifetime", grants: .pro) }
     manager.publish(["pro_lifetime": permanent])
 
     #expect(manager.isActive(AppEntitlement.pro))
@@ -41,7 +49,7 @@ private let revokedLater = ProductState.revoked(RevokedProductState(revocationDa
 
 @MainActor
 @Test func existentialEntitlementsResolveLikeConcreteOnes() {
-    let manager = PurchaseManager().add(iap: "founders_pack", grants: AppEntitlement.founder)
+    let manager = manager { $0.add(iap: "founders_pack", grants: .founder) }
     manager.publish(["founders_pack": permanent])
 
     let entitlement: any Entitlement = AppEntitlement.founder
@@ -50,9 +58,10 @@ private let revokedLater = ProductState.revoked(RevokedProductState(revocationDa
 
 @MainActor
 @Test func productsGrantingSeveralEntitlementsRegisterOnce() {
-    let manager = PurchaseManager()
-        .add(iap: "bundle", grants: AppEntitlement.pro, AppEntitlement.founder)
-        .add(iap: "bundle")
+    let manager = manager {
+        $0.add(iap: "bundle", grants: .pro, .founder)
+            .add(iap: "bundle")
+    }
     manager.publish(["bundle": permanent])
 
     #expect(manager.registeredProducts.map(\.id) == ["bundle"])
@@ -79,11 +88,32 @@ private let revokedLater = ProductState.revoked(RevokedProductState(revocationDa
 
 @MainActor
 @Test func typedEntitlementsAcceptShorthandCases() {
-    let manager = PurchaseManager().add(iap: "founders_pack", grants: AppEntitlement.founder)
+    let manager = manager { $0.add(iap: "founders_pack", grants: .founder) }
     manager.publish(["founders_pack": permanent])
     let entitlements = manager.entitlements(AppEntitlement.self)
 
     #expect(entitlements.isActive(.founder))
     #expect(entitlements.state(of: .pro) == .unknown)
     #expect(entitlements.products(granting: .founder).isEmpty)
+}
+
+@MainActor
+@Test func setupReachesTheManagerOnlyWhenApplied() {
+    let manager = PurchaseManager()
+    let setup = manager.setup(entitlements: AppEntitlement.self)
+        .add(iap: "founders_pack", grants: .founder)
+        .allowAccessDuringBillingRetry()
+    #expect(manager.registeredProducts.isEmpty)
+    #expect(!manager.config.allowAccessDuringBillingRetry)
+
+    setup.apply()
+    #expect(manager.registeredProducts.map(\.id) == ["founders_pack"])
+    #expect(manager.config.allowAccessDuringBillingRetry)
+}
+
+@MainActor
+@Test func appsWithoutEntitlementsRegisterPlainProducts() {
+    let manager = PurchaseManager()
+    manager.setup().add(iap: "unlock").add(subscription: "pro_monthly").apply()
+    #expect(manager.registeredProducts.map(\.id) == ["unlock", "pro_monthly"])
 }

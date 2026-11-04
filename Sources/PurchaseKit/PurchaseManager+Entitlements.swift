@@ -2,20 +2,6 @@ import Foundation
 
 extension PurchaseManager {
 
-    /// Register an IAP that grants the given entitlements while it's active.
-    ///
-    /// Consumables never grant entitlements; deliver them with a transaction handler.
-    @discardableResult
-    public func add(iap id: String, grants entitlements: any Entitlement...) -> Self {
-        self.register(id, kind: .iap, granting: entitlements)
-    }
-
-    /// Register a subscription that grants the given entitlements while it's active.
-    @discardableResult
-    public func add(subscription id: String, grants entitlements: any Entitlement...) -> Self {
-        self.register(id, kind: .subscription, granting: entitlements)
-    }
-
     /// The access state of an entitlement, combined from every product that grants it.
     public func state(of entitlement: any Entitlement) -> ProductState {
         let productIds = self.entitlementProductIds[AnyHashable(entitlement)] ?? []
@@ -31,20 +17,6 @@ extension PurchaseManager {
     public func products(granting entitlement: any Entitlement) -> [Product] {
         let productIds = self.entitlementProductIds[AnyHashable(entitlement)] ?? []
         return self.products.filter { productIds.contains($0.id) }
-    }
-
-    private func register(_ id: String, kind: ProductKind, granting entitlements: [any Entitlement]) -> Self {
-        self.registerProduct(id, kind: kind)
-        for entitlement in entitlements {
-            self.entitlementProductIds[AnyHashable(entitlement), default: []].insert(id)
-        }
-        return self
-    }
-
-    /// Register a product once, however many entitlements it grants.
-    func registerProduct(_ id: String, kind: ProductKind) {
-        guard !self.registeredProducts.contains(where: { $0.id == id }) else { return }
-        self.registeredProducts.append(RegisteredProduct(id: id, kind: kind))
     }
 }
 

@@ -9,11 +9,12 @@ import Foundation
 ///     case pro
 /// }
 ///
-/// PurchaseManager.shared
-///     .add(subscription: "pro_monthly", grants: AppEntitlement.pro)
-///     .add(iap: "pro_lifetime", grants: AppEntitlement.pro)
+/// let entitlements = PurchaseManager.shared.setup(entitlements: AppEntitlement.self)
+///     .add(subscription: "pro_monthly", grants: .pro)
+///     .add(iap: "pro_lifetime", grants: .pro)
+///     .start()
 ///
-/// PurchaseManager.shared.isActive(AppEntitlement.pro)
+/// entitlements.isActive(.pro)
 /// ```
 ///
 /// Entitlements are compared by type and value, so two enums never share an entitlement.

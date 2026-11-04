@@ -7,13 +7,10 @@ import Testing
 @Test func billingRetryAccessIsOptIn() {
     let manager = PurchaseManager()
     #expect(!manager.config.allowAccessDuringBillingRetry)
+    #expect(!manager.setup().allowAccessDuringBillingRetry().allowAccessDuringBillingRetry(false).config.allowAccessDuringBillingRetry)
 
-    let configuredManager = manager.allowAccessDuringBillingRetry()
-    #expect(configuredManager === manager)
+    manager.setup().allowAccessDuringBillingRetry().apply()
     #expect(manager.config.allowAccessDuringBillingRetry)
-
-    manager.allowAccessDuringBillingRetry(false)
-    #expect(!manager.config.allowAccessDuringBillingRetry)
 }
 
 @Test func subscriptionStatusDeterminesAccessRegardlessOfExpirationDate() {
@@ -122,10 +119,10 @@ import Testing
     #expect(manager.resolveVerifiedValue(for: verified) == "verified")
     #expect(manager.resolveVerifiedValue(for: unverified) == nil)
 
-    manager.allowUnverifiedTransactions()
+    manager.config.allowUnverifiedTransactions = true
     #expect(manager.resolveVerifiedValue(for: unverified) == "unverified")
 
-    manager.allowUnverifiedTransactions(false)
+    manager.config.allowUnverifiedTransactions = false
     #expect(manager.resolveVerifiedValue(for: unverified) == nil)
 }
 
@@ -189,7 +186,7 @@ import Testing
 @Test func nonRenewingPolicyTaskDoesNotRetainTheManager() async {
     var manager: PurchaseManager? = PurchaseManager()
     weak let weakManager = manager
-    manager?.resolveNonRenewingSubscriptions { _ in .unknown }
+    manager?.setup().resolveNonRenewingSubscriptions { _ in .unknown }.apply()
     manager?.setupNonRenewingSubscriptionUpdateTask()
     let updateTask = manager?.nonRenewingSubscriptionUpdateTask
 

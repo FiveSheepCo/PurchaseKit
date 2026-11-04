@@ -8,17 +8,6 @@ struct ProductStateCacheLocation {
 
 extension PurchaseManager {
 
-    /// Show the last known product states at launch until the first refresh completes.
-    ///
-    /// StoreKit needs a moment after launch to report entitlements; without this, paid
-    /// content appears locked until it does. The stored states are only for display:
-    /// every refresh replaces them with StoreKit's.
-    @discardableResult
-    public func cacheStates(in defaults: UserDefaults = .standard, key: String = "PurchaseKit.productStates") -> Self {
-        self.config.stateCacheLocation = ProductStateCacheLocation(defaults: defaults, key: key)
-        return self
-    }
-
     func loadCachedStates() {
         // A completed or running refresh is newer than anything stored
         guard self.stateRefreshVersion == 0,
