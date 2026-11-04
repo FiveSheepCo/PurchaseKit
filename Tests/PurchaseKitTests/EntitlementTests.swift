@@ -76,3 +76,14 @@ private let revokedLater = ProductState.revoked(RevokedProductState(revocationDa
     #expect(ProductState.combinedState(from: []) == .unknown)
     #expect(ProductState.combinedState(from: [.unknown, .unknown]) == .unknown)
 }
+
+@MainActor
+@Test func typedEntitlementsAcceptShorthandCases() {
+    let manager = PurchaseManager().add(iap: "founders_pack", grants: AppEntitlement.founder)
+    manager.publish(["founders_pack": permanent])
+    let entitlements = manager.entitlements(AppEntitlement.self)
+
+    #expect(entitlements.isActive(.founder))
+    #expect(entitlements.state(of: .pro) == .unknown)
+    #expect(entitlements.products(granting: .founder).isEmpty)
+}
