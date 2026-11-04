@@ -3,7 +3,7 @@ import StoreKit
 import OSLog
 import Observation
 
-public struct PurchaseManagerConfiguration {
+struct PurchaseManagerConfiguration {
     var allowUnverifiedTransactions: Bool = false
     var allowAccessDuringBillingRetry: Bool = false
     var nonRenewingSubscriptionStateResolver: (@MainActor @Sendable (Transaction) async throws -> ProductState)?
