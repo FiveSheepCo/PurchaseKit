@@ -41,4 +41,11 @@ extension PurchaseManager {
         }
     }
 
+    /// Sync purchases with the App Store, then refresh product states.
+    ///
+    /// Call this only from an explicit Restore Purchases action: it may ask the customer to sign in.
+    public func restore() async throws {
+        try await AppStore.sync()
+        await self.refresh()
+    }
 }
