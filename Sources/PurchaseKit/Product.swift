@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-public struct Product: Identifiable {
+public struct Product: Identifiable, Sendable {
     public let skProduct: StoreKit.Product
     public let kind: ProductKind
     

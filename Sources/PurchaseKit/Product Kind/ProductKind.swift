@@ -1,6 +1,6 @@
 import Foundation
 
-public enum ProductKind: Hashable {
+public enum ProductKind: Hashable, Sendable {
     case iap
     case subscription
 }

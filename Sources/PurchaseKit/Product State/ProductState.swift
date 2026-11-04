@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-public enum ProductState: Hashable {
+public enum ProductState: Hashable, Sendable {
     case active(ActiveProductState)
     case expired(ExpiredProductState)
     case revoked(RevokedProductState)

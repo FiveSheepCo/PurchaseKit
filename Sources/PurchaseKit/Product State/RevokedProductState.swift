@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-public struct RevokedProductState: Hashable {
+public struct RevokedProductState: Hashable, Sendable {
     /// The revocation date, if StoreKit provides it.
     public let revocationDate: Date?
     public let revocationReason: StoreKit::Transaction.RevocationReason?
