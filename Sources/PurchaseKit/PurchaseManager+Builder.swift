@@ -7,7 +7,9 @@ extension PurchaseManager {
     ///
     /// Return only after delivering or reconciling the purchased content durably.
     /// Throw to leave the transaction unfinished; `refresh()` retries unfinished transactions.
-    /// Without a handler, transactions remain unfinished.
+    /// Without a handler, non-consumables and auto-renewable subscriptions are finished
+    /// automatically, since their access follows from product states.
+    /// Consumables and non-renewing subscriptions remain unfinished until a handler delivers them.
     ///
     /// Use the transaction's `id` to make delivery idempotent across retries and app launches.
     /// For consumables, persist the delivered `purchasedQuantity` with the transaction ID.

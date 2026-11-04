@@ -27,9 +27,7 @@ extension PurchaseManager {
         guard !Task.isCancelled,
               let transaction = self.resolveTransaction(for: result) else { return }
 
-        let delivery = self.config.transactionHandler.map { handler in
-            { @MainActor @Sendable in try await handler(transaction) }
-        }
+        let delivery = self.delivery(for: transaction)
         do {
             try await self.transactionDelivery.deliver(
                 revision: TransactionRevision(transaction),
@@ -39,5 +37,21 @@ extension PurchaseManager {
         } catch {
             self.logger.error("Failed to handle transaction '\(transaction.id)': \(error)")
         }
+    }
+
+    /// The app's delivery for a transaction, or `nil` to leave it unfinished.
+    func delivery(for transaction: Transaction) -> (@MainActor @Sendable () async throws -> Void)? {
+        if let handler = self.config.transactionHandler {
+            return { try await handler(transaction) }
+        }
+        guard Self.finishesWithoutHandler(transaction.productType) else { return nil }
+        return {}
+    }
+
+    /// Whether a product type's access follows entirely from product states.
+    ///
+    /// Consumables and non-renewing subscriptions need the app to record each delivery.
+    nonisolated static func finishesWithoutHandler(_ productType: StoreKit::Product.ProductType) -> Bool {
+        productType == .nonConsumable || productType == .autoRenewable
     }
 }

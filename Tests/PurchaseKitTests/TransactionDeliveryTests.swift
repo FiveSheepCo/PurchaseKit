@@ -159,3 +159,13 @@ private enum DeliveryError: Error {
     await #expect(throws: CancellationError.self) { try await attempt.value }
     #expect(probe.events.isEmpty)
 }
+
+@Test func stateBasedProductsFinishWithoutAHandler() {
+    #expect(PurchaseManager.finishesWithoutHandler(.nonConsumable))
+    #expect(PurchaseManager.finishesWithoutHandler(.autoRenewable))
+}
+
+@Test func deliveredProductsWaitForAHandler() {
+    #expect(!PurchaseManager.finishesWithoutHandler(.consumable))
+    #expect(!PurchaseManager.finishesWithoutHandler(.nonRenewable))
+}
