@@ -1,6 +1,7 @@
 import Foundation
 import StoreKit
 import OSLog
+import Observation
 
 public struct PurchaseManagerConfiguration {
     var allowUnverifiedTransactions: Bool = false
@@ -10,54 +11,71 @@ public struct PurchaseManagerConfiguration {
 }
 
 @MainActor
+@Observable
 public class PurchaseManager {
     public static let shared = PurchaseManager()
     
     let logger = Logger(subsystem: "PurchaseKit", category: "PurchaseManager")
     
     /// The task handling incoming transaction updates.
+    @ObservationIgnored
     var updateTask: Task<Void, Never>?
 
     /// The task handling subscription status changes.
+    @ObservationIgnored
     var subscriptionUpdateTask: Task<Void, Never>?
 
     /// The task periodically rechecking the app's non-renewing subscription policy.
+    @ObservationIgnored
     var nonRenewingSubscriptionUpdateTask: Task<Void, Never>?
 
     /// The task loading products and existing entitlements when the manager starts.
+    @ObservationIgnored
     var startupTask: Task<Void, Never>?
 
     /// The coordinator serializing delivery attempts for each transaction.
     let transactionDelivery = TransactionDelivery()
 
     /// The version of the latest product state refresh.
+    @ObservationIgnored
     var stateRefreshVersion: UInt64 = 0
 
     /// Transaction updates retained until the latest entitlement refresh completes.
+    @ObservationIgnored
     var pendingTransactions: [Transaction.ID: VerificationResult<Transaction>] = [:]
 
     /// The newest verified transaction information observed during this session.
+    @ObservationIgnored
     var transactionCache = TransactionCache<Transaction>()
     
     /// Status updates retained until the latest entitlement refresh completes.
+    @ObservationIgnored
     var pendingSubscriptionStatuses: [UInt64: StoreKit::Product.SubscriptionInfo.Status] = [:]
 
     /// The newest verified renewal information observed for each ownership source.
+    @ObservationIgnored
     var subscriptionStatusCache = SubscriptionStatusCache<ResolvedSubscriptionStatus>()
 
     /// Products that have been registered by the user and need to be fetched.
+    @ObservationIgnored
     var registeredProducts: [RegisteredProduct] = []
     
     /// Fully resolved and purchase-ready products.
     public internal(set) var products: [Product] = []
 
     /// Product identifiers known to represent consumable quantities rather than permanent access.
+    @ObservationIgnored
     var consumableProductIds: Set<String> = []
     
     /// The current access state of each product, excluding consumable quantities.
     public internal(set) var productStates: [Product.ID: ProductState] = [:]
     
+    /// Streams receiving product state changes.
+    @ObservationIgnored
+    var stateContinuations: [UUID: AsyncStream<[Product.ID: ProductState]>.Continuation] = [:]
+
     /// The purchase manager configuration.
+    @ObservationIgnored
     var config = PurchaseManagerConfiguration()
     
     public init() {}

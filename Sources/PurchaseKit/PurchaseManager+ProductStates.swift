@@ -57,7 +57,7 @@ extension PurchaseManager {
 
     func applyProductStates(_ resolvedProductStates: [Product.ID: ProductState], refreshVersion: UInt64) {
         guard refreshVersion == self.stateRefreshVersion, !Task.isCancelled else { return }
-        self.productStates = resolvedProductStates
+        self.publish(resolvedProductStates)
         self.pendingTransactions.removeAll()
         self.pendingSubscriptionStatuses.removeAll()
     }
