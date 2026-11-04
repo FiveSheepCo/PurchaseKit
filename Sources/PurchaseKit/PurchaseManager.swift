@@ -49,13 +49,13 @@ public class PurchaseManager {
     var registeredProducts: [RegisteredProduct] = []
     
     /// Fully resolved and purchase-ready products.
-    var products: [Product] = []
+    public internal(set) var products: [Product] = []
 
     /// Product identifiers known to represent consumable quantities rather than permanent access.
     var consumableProductIds: Set<String> = []
     
     /// The current access state of each product, excluding consumable quantities.
-    var productStates: [Product.ID: ProductState] = [:]
+    public internal(set) var productStates: [Product.ID: ProductState] = [:]
     
     /// The purchase manager configuration.
     var config = PurchaseManagerConfiguration()
