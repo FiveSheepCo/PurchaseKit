@@ -14,6 +14,10 @@ struct PurchaseManagerConfiguration {
 @MainActor
 @Observable
 public class PurchaseManager {
+    /// The app's purchase manager.
+    ///
+    /// StoreKit delivers transactions to the whole app, so a second manager would
+    /// listen for and try to finish the same transactions.
     public static let shared = PurchaseManager()
     
     let logger = Logger(subsystem: "PurchaseKit", category: "PurchaseManager")
@@ -83,7 +87,7 @@ public class PurchaseManager {
     @ObservationIgnored
     var config = PurchaseManagerConfiguration()
     
-    public init() {}
+    init() {}
 
     deinit {
         self.startupTask?.cancel()
