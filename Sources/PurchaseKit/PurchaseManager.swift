@@ -64,6 +64,10 @@ public class PurchaseManager {
     /// Fully resolved and purchase-ready products.
     public internal(set) var products: [Product] = []
 
+    /// The products granting each entitlement, keyed by the entitlement's type and value.
+    @ObservationIgnored
+    var entitlementProductIds: [AnyHashable: Set<Product.ID>] = [:]
+
     /// Product identifiers known to represent consumable quantities rather than permanent access.
     @ObservationIgnored
     var consumableProductIds: Set<String> = []

@@ -24,13 +24,13 @@ extension PurchaseManager {
     
     @discardableResult
     public func add(iap id: String) -> Self {
-        registeredProducts.append(RegisteredProduct(id: id, kind: .iap))
+        self.registerProduct(id, kind: .iap)
         return self
     }
     
     @discardableResult
     public func add(subscription id: String) -> Self {
-        registeredProducts.append(RegisteredProduct(id: id, kind: .subscription))
+        self.registerProduct(id, kind: .subscription)
         return self
     }
     
