@@ -23,6 +23,7 @@ extension PurchaseManager {
         // Unchanged refreshes must not wake observers or stream consumers
         guard states != self.productStates else { return }
         self.productStates = states
+        self.saveCachedStates()
         for continuation in self.stateContinuations.values {
             continuation.yield(states)
         }

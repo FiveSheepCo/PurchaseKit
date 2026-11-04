@@ -8,6 +8,7 @@ public struct PurchaseManagerConfiguration {
     var allowAccessDuringBillingRetry: Bool = false
     var nonRenewingSubscriptionStateResolver: (@MainActor @Sendable (Transaction) async throws -> ProductState)?
     var transactionHandler: (@MainActor @Sendable (Transaction) async throws -> Void)?
+    var stateCacheLocation: ProductStateCacheLocation?
 }
 
 @MainActor
@@ -88,6 +89,7 @@ public class PurchaseManager {
     }
     
     public func start() {
+        loadCachedStates()
         setupUpdateTask()
         setupSubscriptionUpdateTask()
         setupNonRenewingSubscriptionUpdateTask()
