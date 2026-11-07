@@ -10,6 +10,7 @@ struct PurchaseManagerConfiguration {
     var transactionHandler: (@MainActor @Sendable (Transaction) async throws -> Void)?
     var stateCacheLocation: DefaultsLocation?
     var overrideLocation: DefaultsLocation?
+    var refreshesOnForeground: Bool = true
 }
 
 @MainActor
@@ -34,6 +35,10 @@ public class PurchaseManager {
     /// The task periodically rechecking the app's non-renewing subscription policy.
     @ObservationIgnored
     var nonRenewingSubscriptionUpdateTask: Task<Void, Never>?
+
+    /// The task refreshing whenever the app comes back to the foreground.
+    @ObservationIgnored
+    var foregroundRefreshTask: Task<Void, Never>?
 
     /// The task loading products and existing entitlements when the manager starts.
     @ObservationIgnored
@@ -105,6 +110,7 @@ public class PurchaseManager {
         self.updateTask?.cancel()
         self.subscriptionUpdateTask?.cancel()
         self.nonRenewingSubscriptionUpdateTask?.cancel()
+        self.foregroundRefreshTask?.cancel()
     }
     
     func start() {
@@ -112,6 +118,11 @@ public class PurchaseManager {
         setupUpdateTask()
         setupSubscriptionUpdateTask()
         setupNonRenewingSubscriptionUpdateTask()
+        if self.config.refreshesOnForeground {
+            setupForegroundRefreshTask(observing: Self.foregroundNotification) { [weak self] in
+                await self?.refresh()
+            }
+        }
 
         guard self.startupTask == nil else { return }
         self.startupTask = Task { [weak self] in
@@ -124,7 +135,8 @@ public class PurchaseManager {
 
     /// Fetch products, refresh current entitlements, and retry unfinished transactions.
     ///
-    /// Call this when the app returns to the foreground or its entitlement policy changes.
+    /// The manager does this at launch and whenever the app returns to the foreground.
+    /// Call it after a failed product fetch, or when the app's entitlement policy changes.
     public func refresh() async {
         do {
             try await self.fetchProducts()

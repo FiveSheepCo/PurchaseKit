@@ -62,7 +62,7 @@ struct MyApp: App {
 }
 ```
 
-`start()` loads your products and the customer's current entitlements and starts listening for transactions. Set up the manager once; there is only one, `PurchaseManager.shared`, because StoreKit delivers transactions to the whole app.
+`start()` loads your products and the customer's current entitlements and starts listening for transactions. It refreshes again whenever the app comes back to the foreground, to catch up on what changed while it was away (turn that off with `refreshOnForeground(false)`). Set up the manager once; there is only one, `PurchaseManager.shared`, because StoreKit delivers transactions to the whole app.
 
 `cacheStates()` is optional: it shows the last known states while StoreKit reports entitlements after launch, so paid content doesn't flash as locked.
 
@@ -242,6 +242,7 @@ An entitlement is active while any of its products is. Permanent access wins ove
 | `cacheStates(in:key:)` | Show the last known states at launch until StoreKit reports. |
 | `allowAccessDuringBillingRetry()` | Keep subscription access while Apple retries a failed payment. |
 | `resolveNonRenewingSubscriptions(using:)` | Decide non-renewing subscription access from your own trusted data. |
+| `refreshOnForeground(_:)` | Refresh when the app returns to the foreground. On by default. |
 | `allowEntitlementOverrides(in:key:)` | Let a debug menu force entitlements on or off. Debug builds only. |
 | `allowUnverifiedTransactions()` | Accept unverified transactions. For debugging only, never in production. |
 

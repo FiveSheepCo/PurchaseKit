@@ -122,6 +122,16 @@ extension PurchaseManager {
             return setup
         }
 
+        /// Refresh whenever the app comes back to the foreground (on by default).
+        ///
+        /// Transaction updates already arrive while the app runs; this also catches up on what
+        /// changed while it was away, and retries products that failed to load.
+        public func refreshOnForeground(_ enabled: Bool = true) -> Self {
+            var setup = self
+            setup.config.refreshesOnForeground = enabled
+            return setup
+        }
+
         /// Let the app force entitlements on or off with `setOverride(_:isActive:)`, to try paid
         /// features without buying them. Overrides are remembered in `defaults` between launches.
         ///
