@@ -22,6 +22,18 @@ public struct Entitlements<E: Entitlement>: Sendable {
     public func products(granting entitlement: E) -> [Product] {
         self.manager.products(granting: entitlement as any Entitlement)
     }
+
+    /// The override set for an entitlement: `true` grants it, `false` withholds it, `nil` follows its products.
+    public func override(for entitlement: E) -> Bool? {
+        self.manager.override(for: entitlement as any Entitlement)
+    }
+
+    /// Force an entitlement on or off regardless of its products, or pass `nil` to follow them again.
+    ///
+    /// For debugging; requires `allowEntitlementOverrides(in:key:)` at setup.
+    public func setOverride(_ entitlement: E, isActive: Bool?) {
+        self.manager.setOverride(entitlement as any Entitlement, isActive: isActive)
+    }
 }
 
 extension PurchaseManager {

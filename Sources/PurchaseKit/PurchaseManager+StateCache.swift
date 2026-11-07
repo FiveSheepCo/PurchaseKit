@@ -1,7 +1,7 @@
 import Foundation
 
-/// Where the manager keeps the last known product states between launches.
-struct ProductStateCacheLocation {
+/// Where the manager keeps something between launches: the last known states, or overrides.
+struct DefaultsLocation {
     let defaults: UserDefaults
     let key: String
 }

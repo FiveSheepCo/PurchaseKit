@@ -3,9 +3,12 @@ import Foundation
 extension PurchaseManager {
 
     /// The access state of an entitlement, combined from every product that grants it.
+    ///
+    /// An override set with `setOverride(_:isActive:)` takes precedence.
     public func state(of entitlement: any Entitlement) -> ProductState {
         let productIds = self.entitlementProductIds[AnyHashable(entitlement)] ?? []
         return ProductState.combinedState(from: productIds.map(self.state(for:)))
+            .overridden(by: self.override(for: entitlement))
     }
 
     /// Whether any product granting the entitlement is currently active.

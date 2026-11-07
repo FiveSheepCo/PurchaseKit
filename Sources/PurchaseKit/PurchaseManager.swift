@@ -8,7 +8,8 @@ struct PurchaseManagerConfiguration {
     var allowAccessDuringBillingRetry: Bool = false
     var nonRenewingSubscriptionStateResolver: (@MainActor @Sendable (Transaction) async throws -> ProductState)?
     var transactionHandler: (@MainActor @Sendable (Transaction) async throws -> Void)?
-    var stateCacheLocation: ProductStateCacheLocation?
+    var stateCacheLocation: DefaultsLocation?
+    var overrideLocation: DefaultsLocation?
 }
 
 @MainActor
@@ -85,6 +86,9 @@ public class PurchaseManager {
     /// Streams receiving product state changes.
     @ObservationIgnored
     var stateContinuations: [UUID: AsyncStream<[Product.ID: ProductState]>.Continuation] = [:]
+
+    /// Entitlement overrides for debugging, keyed by `overrideKey(for:)`.
+    var entitlementOverrides: [String: Bool] = [:]
 
     /// Whether a setup has been applied; the manager is set up once.
     @ObservationIgnored

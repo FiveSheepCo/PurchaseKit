@@ -118,7 +118,25 @@ extension PurchaseManager {
         /// every refresh replaces them with StoreKit's.
         public func cacheStates(in defaults: UserDefaults = .standard, key: String = "PurchaseKit.productStates") -> Self {
             var setup = self
-            setup.config.stateCacheLocation = ProductStateCacheLocation(defaults: defaults, key: key)
+            setup.config.stateCacheLocation = DefaultsLocation(defaults: defaults, key: key)
+            return setup
+        }
+
+        /// Let the app force entitlements on or off with `setOverride(_:isActive:)`, to try paid
+        /// features without buying them. Overrides are remembered in `defaults` between launches.
+        ///
+        /// - Warning: Allow this in debug builds only, or anyone could unlock everything:
+        ///   ```swift
+        ///   #if DEBUG
+        ///   setup = setup.allowEntitlementOverrides()
+        ///   #endif
+        ///   ```
+        public func allowEntitlementOverrides(
+            in defaults: UserDefaults = .standard,
+            key: String = "PurchaseKit.entitlementOverrides"
+        ) -> Self {
+            var setup = self
+            setup.config.overrideLocation = DefaultsLocation(defaults: defaults, key: key)
             return setup
         }
 
@@ -140,6 +158,7 @@ extension PurchaseManager {
             }
             self.manager.isSetUp = true
             self.manager.config = self.config
+            self.manager.loadEntitlementOverrides()
             for registration in self.registrations {
                 self.manager.registerProduct(registration.id, kind: registration.kind)
                 for entitlement in registration.entitlements {

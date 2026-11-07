@@ -196,6 +196,30 @@ Task {
 }
 ```
 
+## Trying paid features without buying
+
+While developing, a debug menu can force entitlements on or off without a purchase. Allow overrides at setup, in debug builds only:
+
+```swift
+var setup = PurchaseManager.shared.setup(entitlements: AppEntitlement.self)
+    .add(iap: "founders_pack", grants: .founder)
+#if DEBUG
+setup = setup.allowEntitlementOverrides()
+#endif
+setup.start()
+```
+
+Then set one with `setOverride(_:isActive:)`: `true` grants it, `false` withholds it (to see a purchased feature locked), and `nil` follows its products again:
+
+```swift
+Toggle("Own the Founder's Pack", isOn: Binding(
+    get: { entitlements.override(for: .founder) == true },
+    set: { entitlements.setOverride(.founder, isActive: $0 ? true : nil) }
+))
+```
+
+Overrides are remembered between launches and apply only to entitlements: product states stay what StoreKit reports. A build that doesn't call `allowEntitlementOverrides()` ignores any stored overrides.
+
 ## Product states
 
 Every product and entitlement has a `ProductState`:
@@ -218,6 +242,7 @@ An entitlement is active while any of its products is. Permanent access wins ove
 | `cacheStates(in:key:)` | Show the last known states at launch until StoreKit reports. |
 | `allowAccessDuringBillingRetry()` | Keep subscription access while Apple retries a failed payment. |
 | `resolveNonRenewingSubscriptions(using:)` | Decide non-renewing subscription access from your own trusted data. |
+| `allowEntitlementOverrides(in:key:)` | Let a debug menu force entitlements on or off. Debug builds only. |
 | `allowUnverifiedTransactions()` | Accept unverified transactions. For debugging only, never in production. |
 
 ## Testing
