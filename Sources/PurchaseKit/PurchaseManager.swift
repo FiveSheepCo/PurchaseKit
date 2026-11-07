@@ -68,6 +68,9 @@ public class PurchaseManager {
     /// Fully resolved and purchase-ready products.
     public internal(set) var products: [Product] = []
 
+    /// Whether the registered products are being fetched, were fetched, or couldn't be.
+    public internal(set) var productsStatus: ProductsStatus = .notLoaded
+
     /// The products granting each entitlement, keyed by the entitlement's type and value.
     @ObservationIgnored
     var entitlementProductIds: [AnyHashable: Set<Product.ID>] = [:]

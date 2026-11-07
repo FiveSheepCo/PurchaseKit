@@ -129,6 +129,23 @@ struct Paywall: View {
 
 Outside SwiftUI, `try await PurchaseManager.shared.purchase(product)` does both steps.
 
+Until the products arrive, `productsStatus` tells a store whether they're still loading or couldn't be fetched, so it can offer to try again:
+
+```swift
+if let product = entitlements.products(granting: .pro).first {
+    BuyButton(product: product)
+} else {
+    switch PurchaseManager.shared.productsStatus {
+        case .notLoaded, .loading:
+            ProgressView()
+        case .loaded:
+            Text("Not available in your country")
+        case .failed:
+            Button("Try Again") { Task { await PurchaseManager.shared.refresh() } }
+    }
+}
+```
+
 ### 5. Restore purchases
 
 App Review expects a Restore Purchases button for anything that isn't consumable:
