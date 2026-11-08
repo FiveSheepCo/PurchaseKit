@@ -249,3 +249,7 @@ An entitlement is active while any of its products is. Permanent access wins ove
 ## Testing
 
 Test purchases in Xcode with a StoreKit configuration file (File → New → File → StoreKit Configuration File, synced from App Store Connect), selected in your scheme's Run options. PurchaseKit's own tests run with `swift test`.
+
+## License
+
+PurchaseKit is available under the MIT license. See [LICENSE](LICENSE).
